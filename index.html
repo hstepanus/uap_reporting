@@ -124,7 +124,7 @@
           }
 
           const content = `
-            <b>Time of Incident:</b> ${attrs.time_of_incident || "N/A"}<br>
+            <b>Time of Incident:</b> ${attrs.time_of_incident ? new Date(attrs.time_of_incident).toLocaleString() : "N/A"}<br>
             <b>Description:</b> ${attrs.describe_encounter || "N/A"}<br>
             <b>Submitted By:</b> ${attrs.Creator || "Unknown"}<br>
             <b>Submitted On:</b> ${attrs.CreationDate ? new Date(attrs.CreationDate).toLocaleString() : "N/A"}<br>
