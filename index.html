@@ -5,11 +5,9 @@
   <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no" />
   <title>UAP Sightings Map</title>
 
-  <!-- ArcGIS API CSS and JS -->
   <link rel="stylesheet" href="https://js.arcgis.com/4.26/esri/themes/light/main.css" />
   <script src="https://js.arcgis.com/4.26/"></script>
 
-  <!-- Style -->
   <style>
     html, body, #viewDiv {
       padding: 0;
@@ -35,8 +33,12 @@
       background-color: #1b5e20;
     }
   </style>
+</head>
 
-  <!-- Script -->
+<body>
+  <a href="https://arcg.is/1qjujz1" target="_blank" class="reportBtn">Report a Sighting</a>
+  <div id="viewDiv"></div>
+
   <script>
     require([
       "esri/config",
@@ -49,10 +51,8 @@
       "esri/widgets/Expand"
     ], (esriConfig, Map, MapView, FeatureLayer, Locate, Search, Legend, Expand) => {
 
-      // ✅ API Key
       esriConfig.apiKey = "AAPTxy8BH1VEsoebNVZXo8HurEwEJiPsJAv6XK5APCcuFpZEmTCdTdSU9XMQXYBgfL9c5UnZrY4R2UdHgVrW8LfqDFKnjefPQr9XO0pMlE2S9osFC4vlxQEcDC2L-rbRhvnh3cGFmfknrnTY3XSIHKqUu1aHDnbMm61c0aME06Eg9u_NwfzhPyWlPsZlxkyOWLAtootixnskdcZY0pddnIjDLJ19HPMO7YoJRFfo-wFMnrXD59hI_LVwr_BLfWo0dbk7AT1_nGwi5c7J";
 
-      // 🌍 Map setup with updated basemap
       const map = new Map({ basemap: "streets-relief-vector" });
 
       const view = new MapView({
@@ -62,15 +62,9 @@
         zoom: 5
       });
 
-      // 📍 Locate Button
-      const locateBtn = new Locate({ view });
-      view.ui.add(locateBtn, "top-left");
+      view.ui.add(new Locate({ view }), "top-left");
+      view.ui.add(new Search({ view }), "bottom-right");
 
-      // 🔍 Search Widget
-      const search = new Search({ view });
-      view.ui.add(search, "bottom-right");
-
-      // 🛸 Custom Renderer with your UFO icon
       const uapRenderer = {
         type: "simple",
         symbol: {
@@ -82,44 +76,69 @@
         label: "UAP encounter"
       };
 
-      // 🧠 UAP Feature Layer with UFO icon, Arcade expression, and popup
       const uapLayer = new FeatureLayer({
         url: "https://services.arcgis.com/HRPe58bUyBqyyiCt/arcgis/rest/services/survey123_7313cc4fd8bc40c78163e6954fd9dd7f_results/FeatureServer/0",
         outFields: ["*"],
         renderer: uapRenderer,
-        popupTemplate: {
-          title: "UAP Sighting Report",
-          content: [
-            {
-              type: "fields",
-              fieldInfos: [
-                { fieldName: "time_of_incident", label: "Time of Incident", format: { dateFormat: "short-date-short-time" }},
-                { fieldName: "describe_encounter", label: "Description" },
-                { fieldName: "Creator", label: "Submitted By" },
-                { fieldName: "CreationDate", label: "Submitted On", format: { dateFormat: "short-date-short-time" }},
-                { fieldName: "Editor", label: "Last Edited By" },
-                { fieldName: "EditDate", label: "Last Edited", format: { dateFormat: "short-date-short-time" }}
-              ]
-            },
-            {
-              type: "text",
-              text: "Attachment (if available):<br><img src='{expression/attachmentUrl}' width='250' style='border:1px solid #ccc; border-radius:4px;'/>"
-            }
-          ],
-          expressionInfos: [{
-            name: "attachmentUrl",
-            title: "Attachment URL",
-            expression: `
-              var base = "https://services.arcgis.com/HRPe58bUyBqyyiCt/arcgis/rest/services/survey123_7313cc4fd8bc40c78163e6954fd9dd7f_results/FeatureServer/0/";
-              return base + $feature.OBJECTID + "/attachments/1";
-            `
-          }]
-        }
+        popupEnabled: true
       });
 
       map.add(uapLayer);
 
-      // 🗺️ Legend with custom title
+      view.whenLayerView(uapLayer).then(() => {
+        view.on("click", async (event) => {
+          const response = await view.hitTest(event);
+          const result = response.results.find(r => r.graphic && r.graphic.layer === uapLayer);
+          if (!result) return;
+
+          const graphic = result.graphic;
+          const attrs = graphic.attributes;
+          console.log("Attributes on clicked graphic:", attrs);
+
+          // Try detecting the correct object ID field
+          const objectId = attrs.OBJECTID || attrs.objectid || attrs.ObjectId || attrs.objectId;
+
+          console.log("Resolved OBJECTID:", objectId);
+
+          if (!objectId) {
+            console.warn("No valid OBJECTID field found.");
+            return;
+          }
+
+          let imgHtml = "";
+
+          try {
+            const attachmentResults = await uapLayer.queryAttachments({ objectIds: [objectId] });
+            const attachments = attachmentResults[objectId];
+
+            console.log("Attachments for OBJECTID", objectId, attachments);
+
+            if (attachments && attachments.length > 0) {
+              const attachmentUrl = attachments[0].url + "?w=400";
+
+
+              imgHtml = `<br><b>Attached Image:</b><br><img src="${attachmentUrl}" width="250" style="border:1px solid #ccc; border-radius:4px;" />`;
+            }
+          } catch (err) {
+            console.warn("Attachment query failed:", err);
+          }
+
+          const content = `
+            <b>Time of Incident:</b> ${attrs.time_of_incident || "N/A"}<br>
+            <b>Description:</b> ${attrs.describe_encounter || "N/A"}<br>
+            <b>Submitted By:</b> ${attrs.Creator || "Unknown"}<br>
+            <b>Submitted On:</b> ${attrs.CreationDate ? new Date(attrs.CreationDate).toLocaleString() : "N/A"}<br>
+            ${imgHtml}
+          `;
+
+          view.popup.open({
+            title: "UAP Sighting Report",
+            content: content,
+            location: event.mapPoint
+          });
+        });
+      });
+
       const legend = new Legend({
         view: view,
         layerInfos: [{
@@ -128,7 +147,6 @@
         }]
       });
 
-      // Wrap in Expand widget for cleaner UI
       const legendExpand = new Expand({
         view: view,
         content: legend,
@@ -139,10 +157,5 @@
       view.ui.add(legendExpand, "bottom-left");
     });
   </script>
-</head>
-
-<body>
-  <a href="https://arcg.is/1qjujz1" target="_blank" class="reportBtn">Report a Sighting</a>
-  <div id="viewDiv"></div>
 </body>
 </html>
