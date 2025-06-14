@@ -45,19 +45,20 @@
       "esri/layers/FeatureLayer",
       "esri/widgets/Locate",
       "esri/widgets/Search",
-      "esri/widgets/Legend"
-    ], (esriConfig, Map, MapView, FeatureLayer, Locate, Search, Legend) => {
+      "esri/widgets/Legend",
+      "esri/widgets/Expand"
+    ], (esriConfig, Map, MapView, FeatureLayer, Locate, Search, Legend, Expand) => {
 
       // ✅ API Key
       esriConfig.apiKey = "AAPTxy8BH1VEsoebNVZXo8HurEwEJiPsJAv6XK5APCcuFpZEmTCdTdSU9XMQXYBgfL9c5UnZrY4R2UdHgVrW8LfqDFKnjefPQr9XO0pMlE2S9osFC4vlxQEcDC2L-rbRhvnh3cGFmfknrnTY3XSIHKqUu1aHDnbMm61c0aME06Eg9u_NwfzhPyWlPsZlxkyOWLAtootixnskdcZY0pddnIjDLJ19HPMO7YoJRFfo-wFMnrXD59hI_LVwr_BLfWo0dbk7AT1_nGwi5c7J";
 
-      // 🌍 Map setup
-      const map = new Map({ basemap: "satellite" });
+      // 🌍 Map setup with updated basemap
+      const map = new Map({ basemap: "streets-relief-vector" });
 
       const view = new MapView({
         container: "viewDiv",
         map: map,
-        center: [-98, 39],  // Center of the U.S.
+        center: [-98, 39],
         zoom: 5
       });
 
@@ -69,10 +70,23 @@
       const search = new Search({ view });
       view.ui.add(search, "bottom-right");
 
-      // 🧠 UAP Feature Layer with Arcade-powered Popup
+      // 🛸 Custom Renderer with your UFO icon
+      const uapRenderer = {
+        type: "simple",
+        symbol: {
+          type: "picture-marker",
+          url: "https://raw.githubusercontent.com/DavidKimmel/uap_reporting/main/uap.png",
+          width: "32px",
+          height: "32px"
+        },
+        label: "UAP encounter"
+      };
+
+      // 🧠 UAP Feature Layer with UFO icon, Arcade expression, and popup
       const uapLayer = new FeatureLayer({
         url: "https://services.arcgis.com/HRPe58bUyBqyyiCt/arcgis/rest/services/survey123_7313cc4fd8bc40c78163e6954fd9dd7f_results/FeatureServer/0",
         outFields: ["*"],
+        renderer: uapRenderer,
         popupTemplate: {
           title: "UAP Sighting Report",
           content: [
@@ -105,9 +119,24 @@
 
       map.add(uapLayer);
 
-      // 🗺️ Legend
-      const legend = new Legend({ view });
-      view.ui.add(legend, "bottom-left");
+      // 🗺️ Legend with custom title
+      const legend = new Legend({
+        view: view,
+        layerInfos: [{
+          layer: uapLayer,
+          title: "UAP Reporting"
+        }]
+      });
+
+      // Wrap in Expand widget for cleaner UI
+      const legendExpand = new Expand({
+        view: view,
+        content: legend,
+        expanded: true,
+        expandTooltip: "Legend"
+      });
+
+      view.ui.add(legendExpand, "bottom-left");
     });
   </script>
 </head>
