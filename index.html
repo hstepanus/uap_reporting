@@ -3,9 +3,10 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <title>UAP Sightings Map</title>
+  <title>🛸UAP Sightings Map</title>
 
   <link rel="stylesheet" href="https://js.arcgis.com/4.26/esri/themes/light/main.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap" rel="stylesheet">
   <script src="https://js.arcgis.com/4.26/"></script>
 
   <style>
@@ -14,23 +15,40 @@
       margin: 0;
       height: 100%;
       width: 100%;
+      background: radial-gradient(ellipse at bottom, #0d1b2a 0%, #000000 100%);
+      font-family: 'Orbitron', sans-serif;
+      color: #00ffcc;
     }
+
     .reportBtn {
       position: absolute;
       z-index: 10;
       top: 10px;
       right: 10px;
-      background-color: #2e7d32;
-      color: white;
+      background-color: #00ffcc;
+      color: #0d1b2a;
       padding: 10px 18px;
       border: none;
       border-radius: 4px;
       font-size: 14px;
       cursor: pointer;
       text-decoration: none;
+      box-shadow: 0 0 10px #00ffcc, 0 0 20px #00ffcc;
+      transition: background-color 0.3s ease, box-shadow 0.3s ease;
     }
+
     .reportBtn:hover {
-      background-color: #1b5e20;
+      background-color: #00ccaa;
+      box-shadow: 0 0 15px #00ffcc, 0 0 30px #00ffcc;
+    }
+
+    .esri-popup__content, .esri-popup__header-title {
+      font-family: 'Orbitron', sans-serif;
+      color: #00ffcc;
+    }
+
+    .esri-popup__main-container {
+      background-color: #111;
     }
   </style>
 </head>
@@ -93,17 +111,9 @@
 
           const graphic = result.graphic;
           const attrs = graphic.attributes;
-          console.log("Attributes on clicked graphic:", attrs);
-
-          // Try detecting the correct object ID field
           const objectId = attrs.OBJECTID || attrs.objectid || attrs.ObjectId || attrs.objectId;
 
-          console.log("Resolved OBJECTID:", objectId);
-
-          if (!objectId) {
-            console.warn("No valid OBJECTID field found.");
-            return;
-          }
+          if (!objectId) return;
 
           let imgHtml = "";
 
@@ -111,12 +121,8 @@
             const attachmentResults = await uapLayer.queryAttachments({ objectIds: [objectId] });
             const attachments = attachmentResults[objectId];
 
-            console.log("Attachments for OBJECTID", objectId, attachments);
-
             if (attachments && attachments.length > 0) {
               const attachmentUrl = attachments[0].url + "?w=400";
-
-
               imgHtml = `<br><b>Attached Image:</b><br><img src="${attachmentUrl}" width="250" style="border:1px solid #ccc; border-radius:4px;" />`;
             }
           } catch (err) {
@@ -139,6 +145,7 @@
         });
       });
 
+      // ✅ Define the Legend first
       const legend = new Legend({
         view: view,
         layerInfos: [{
@@ -147,11 +154,17 @@
         }]
       });
 
+      // ✅ Wrap it in Expand widget
       const legendExpand = new Expand({
         view: view,
         content: legend,
-        expanded: true,
+        expanded: false,
         expandTooltip: "Legend"
+      });
+
+      // ✅ Collapse legend on mobile, expand on larger screens
+      view.watch("widthBreakpoint", (breakpoint) => {
+        legendExpand.expanded = (breakpoint !== "xsmall");
       });
 
       view.ui.add(legendExpand, "bottom-left");
