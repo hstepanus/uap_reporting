@@ -1,101 +1,119 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no" />
-    <title>UAP Sightings Map</title>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>UAP Sightings Map</title>
 
-    <!-- CSS styling for map and button -->
-    <style>
-      html, body, #viewDiv {
-        padding: 0;
-        margin: 0;
-        height: 100%;
-        width: 100%;
-      }
-      .reportBtn {
-        position: absolute;
-        z-index: 10;
-        top: 10px;
-        right: 10px;
-        background-color: #2e7d32;
-        color: white;
-        padding: 10px 18px;
-        border: none;
-        border-radius: 4px;
-        font-size: 14px;
-        cursor: pointer;
-        text-decoration: none;
-      }
-      .reportBtn:hover {
-        background-color: #1b5e20;
-      }
-    </style>
+  <!-- ArcGIS API CSS and JS -->
+  <link rel="stylesheet" href="https://js.arcgis.com/4.26/esri/themes/light/main.css" />
+  <script src="https://js.arcgis.com/4.26/"></script>
 
-    <!-- ArcGIS JS API -->
-    <link rel="stylesheet" href="https://js.arcgis.com/4.26/esri/themes/light/main.css" />
-    <script src="https://js.arcgis.com/4.26/"></script>
+  <!-- Style -->
+  <style>
+    html, body, #viewDiv {
+      padding: 0;
+      margin: 0;
+      height: 100%;
+      width: 100%;
+    }
+    .reportBtn {
+      position: absolute;
+      z-index: 10;
+      top: 10px;
+      right: 10px;
+      background-color: #2e7d32;
+      color: white;
+      padding: 10px 18px;
+      border: none;
+      border-radius: 4px;
+      font-size: 14px;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .reportBtn:hover {
+      background-color: #1b5e20;
+    }
+  </style>
 
-    <script>
-      require([
-        "esri/config",
-        "esri/Map",
-        "esri/views/MapView",
-        "esri/layers/FeatureLayer",
-        "esri/widgets/Locate",
-        "esri/widgets/Search",
-        "esri/widgets/Legend"
-      ], (esriConfig, Map, MapView, FeatureLayer, Locate, Search, Legend) => {
+  <!-- Script -->
+  <script>
+    require([
+      "esri/config",
+      "esri/Map",
+      "esri/views/MapView",
+      "esri/layers/FeatureLayer",
+      "esri/widgets/Locate",
+      "esri/widgets/Search",
+      "esri/widgets/Legend"
+    ], (esriConfig, Map, MapView, FeatureLayer, Locate, Search, Legend) => {
 
-        // Set your API key
-        esriConfig.apiKey = "AAPTxy8BH1VEsoebNVZXo8HurEwEJiPsJAv6XK5APCcuFpZEmTCdTdSU9XMQXYBgfL9c5UnZrY4R2UdHgVrW8LfqDFKnjefPQr9XO0pMlE2S9osFC4vlxQEcDC2L-rbRhvnh3cGFmfknrnTY3XSIHKqUu1aHDnbMm61c0aME06Eg9u_NwfzhPyWlPsZlxkyOWLAtootixnskdcZY0pddnIjDLJ19HPMO7YoJRFfo-wFMnrXD59hI_LVwr_BLfWo0dbk7AT1_nGwi5c7J";
+      // ✅ API Key
+      esriConfig.apiKey = "AAPTxy8BH1VEsoebNVZXo8HurEwEJiPsJAv6XK5APCcuFpZEmTCdTdSU9XMQXYBgfL9c5UnZrY4R2UdHgVrW8LfqDFKnjefPQr9XO0pMlE2S9osFC4vlxQEcDC2L-rbRhvnh3cGFmfknrnTY3XSIHKqUu1aHDnbMm61c0aME06Eg9u_NwfzhPyWlPsZlxkyOWLAtootixnskdcZY0pddnIjDLJ19HPMO7YoJRFfo-wFMnrXD59hI_LVwr_BLfWo0dbk7AT1_nGwi5c7J";
 
-        // Set up the map
-        const map = new Map({
-          basemap: "streets-relief-vector"
-        });
+      // 🌍 Map setup
+      const map = new Map({ basemap: "satellite" });
 
-        const view = new MapView({
-          container: "viewDiv",
-          map: map,
-          center: [-98, 39],  // Centered on the U.S.
-          zoom: 3
-        });
-
-        // Add location button
-        const locateBtn = new Locate({ view: view });
-        view.ui.add(locateBtn, "top-left");
-
-        // Add search widget
-        const searchWidget = new Search({ view: view });
-        view.ui.add(searchWidget, "bottom-right");
-
-        // Feature layer: UAP reports
-        const uapLayer = new FeatureLayer({
-          url: "https://services.arcgis.com/HRPe58bUyBqyyiCt/arcgis/rest/services/survey123_7313cc4fd8bc40c78163e6954fd9dd7f_results/FeatureServer",
-          popupTemplate: {
-            title: "UAP Sighting",
-            content: `
-              <b>Date:</b> {Date}<br>
-              <b>Location:</b> {Location}<br>
-              <b>Description:</b> {SightingDetails}<br>
-              <b>Duration:</b> {Duration}<br>
-              <b>Object Shape:</b> {Shape}
-            `
-          }
-        });
-        map.add(uapLayer);
-
-        // Optional: Add legend if categories or symbols are present
-        const legend = new Legend({ view: view });
-        view.ui.add(legend, "bottom-left");
+      const view = new MapView({
+        container: "viewDiv",
+        map: map,
+        center: [-98, 39],  // Center of the U.S.
+        zoom: 5
       });
-    </script>
-  </head>
 
-  <body>
-    <!-- Survey123 form link -->
-    <a href="https://arcg.is/1qjujz1" target="_blank" class="reportBtn">Report a Sighting</a>
-    <div id="viewDiv"></div>
-  </body>
+      // 📍 Locate Button
+      const locateBtn = new Locate({ view });
+      view.ui.add(locateBtn, "top-left");
+
+      // 🔍 Search Widget
+      const search = new Search({ view });
+      view.ui.add(search, "bottom-right");
+
+      // 🧠 UAP Feature Layer with Arcade-powered Popup
+      const uapLayer = new FeatureLayer({
+        url: "https://services.arcgis.com/HRPe58bUyBqyyiCt/arcgis/rest/services/survey123_7313cc4fd8bc40c78163e6954fd9dd7f_results/FeatureServer/0",
+        outFields: ["*"],
+        popupTemplate: {
+          title: "UAP Sighting Report",
+          content: [
+            {
+              type: "fields",
+              fieldInfos: [
+                { fieldName: "time_of_incident", label: "Time of Incident", format: { dateFormat: "short-date-short-time" }},
+                { fieldName: "describe_encounter", label: "Description" },
+                { fieldName: "Creator", label: "Submitted By" },
+                { fieldName: "CreationDate", label: "Submitted On", format: { dateFormat: "short-date-short-time" }},
+                { fieldName: "Editor", label: "Last Edited By" },
+                { fieldName: "EditDate", label: "Last Edited", format: { dateFormat: "short-date-short-time" }}
+              ]
+            },
+            {
+              type: "text",
+              text: "Attachment (if available):<br><img src='{expression/attachmentUrl}' width='250' style='border:1px solid #ccc; border-radius:4px;'/>"
+            }
+          ],
+          expressionInfos: [{
+            name: "attachmentUrl",
+            title: "Attachment URL",
+            expression: `
+              var base = "https://services.arcgis.com/HRPe58bUyBqyyiCt/arcgis/rest/services/survey123_7313cc4fd8bc40c78163e6954fd9dd7f_results/FeatureServer/0/";
+              return base + $feature.OBJECTID + "/attachments/1";
+            `
+          }]
+        }
+      });
+
+      map.add(uapLayer);
+
+      // 🗺️ Legend
+      const legend = new Legend({ view });
+      view.ui.add(legend, "bottom-left");
+    });
+  </script>
+</head>
+
+<body>
+  <a href="https://arcg.is/1qjujz1" target="_blank" class="reportBtn">Report a Sighting</a>
+  <div id="viewDiv"></div>
+</body>
 </html>
