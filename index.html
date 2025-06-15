@@ -17,7 +17,7 @@
       width: 100%;
       background: radial-gradient(ellipse at bottom, #0d1b2a 0%, #000000 100%);
       font-family: 'Orbitron', sans-serif;
-      color: #00ffcc;
+      color: #00ff40;
     }
 
     .reportBtn {
@@ -25,7 +25,7 @@
       z-index: 10;
       top: 10px;
       right: 10px;
-      background-color: #00ffcc;
+      background-color: #00ff40;
       color: #0d1b2a;
       padding: 10px 18px;
       border: none;
@@ -33,22 +33,42 @@
       font-size: 14px;
       cursor: pointer;
       text-decoration: none;
-      box-shadow: 0 0 10px #00ffcc, 0 0 20px #00ffcc;
+      box-shadow: 0 0 10px #00ff40, 0 0 20px #00ff40;
       transition: background-color 0.3s ease, box-shadow 0.3s ease;
     }
 
     .reportBtn:hover {
-      background-color: #00ccaa;
-      box-shadow: 0 0 15px #00ffcc, 0 0 30px #00ffcc;
+      background-color: #cfec5c;
+      box-shadow: 0 0 15px #00ff40, 0 0 30px #00ff40;
     }
 
     .esri-popup__content, .esri-popup__header-title {
       font-family: 'Orbitron', sans-serif;
-      color: #00ffcc;
+      color: #00ff40;
     }
 
     .esri-popup__main-container {
       background-color: #111;
+    }
+
+    /* Popup content block */
+    .uap-popup {
+      font-family: 'Orbitron', sans-serif;
+      color: #222; /* Body text */
+      line-height: 1.6;
+    }
+
+    /* Popup label/title */
+    .uap-popup .popup-label {
+      font-weight: bold;
+      color: #ff0000; 
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    /* Section spacing */
+    .uap-popup .popup-section {
+      margin-bottom: 12px;
     }
   </style>
 </head>
@@ -77,12 +97,13 @@
         container: "viewDiv",
         map: map,
         center: [-98, 39],
-        zoom: 5
+        zoom: 4
       });
 
       view.ui.add(new Locate({ view }), "top-left");
       view.ui.add(new Search({ view }), "bottom-right");
 
+      // upa icon marker
       const uapRenderer = {
         type: "simple",
         symbol: {
@@ -93,7 +114,7 @@
         },
         label: "UAP encounter"
       };
-
+      // call to AGOL feature layer API
       const uapLayer = new FeatureLayer({
         url: "https://services.arcgis.com/HRPe58bUyBqyyiCt/arcgis/rest/services/survey123_7313cc4fd8bc40c78163e6954fd9dd7f_results/FeatureServer/0",
         outFields: ["*"],
@@ -103,40 +124,66 @@
 
       map.add(uapLayer);
 
+      // Wait until the UAP feature layer view is fully loaded
       view.whenLayerView(uapLayer).then(() => {
+        
+        // Set up a click event listener on the map view
         view.on("click", async (event) => {
+          
+          // Use hitTest to detect which feature (if any) was clicked
           const response = await view.hitTest(event);
+
+          // Find the first graphic in the hitTest result that belongs to the UAP layer
           const result = response.results.find(r => r.graphic && r.graphic.layer === uapLayer);
           if (!result) return;
 
           const graphic = result.graphic;
           const attrs = graphic.attributes;
-          const objectId = attrs.OBJECTID || attrs.objectid || attrs.ObjectId || attrs.objectId;
 
+          // Get the OBJECTID of the clicked feature (varies in case depending on data source)
+          const objectId = attrs.OBJECTID || attrs.objectid || attrs.ObjectId || attrs.objectId;
           if (!objectId) return;
 
           let imgHtml = "";
 
           try {
+            // Query attachments (e.g., uploaded images) for the selected feature
             const attachmentResults = await uapLayer.queryAttachments({ objectIds: [objectId] });
             const attachments = attachmentResults[objectId];
 
+            // If an attachment exists, format the first one as an HTML image
             if (attachments && attachments.length > 0) {
-              const attachmentUrl = attachments[0].url + "?w=400";
+              const attachmentUrl = attachments[0].url + "?w=400"; // add width parameter
               imgHtml = `<br><b>Attached Image:</b><br><img src="${attachmentUrl}" width="250" style="border:1px solid #ccc; border-radius:4px;" />`;
             }
           } catch (err) {
             console.warn("Attachment query failed:", err);
           }
 
+          // Format the popup content using Orbitron-styled CSS classes
           const content = `
-            <b>Time of Incident:</b> ${attrs.time_of_incident ? new Date(attrs.time_of_incident).toLocaleString() : "N/A"}<br>
-            <b>Description:</b> ${attrs.describe_encounter || "N/A"}<br>
-            <b>Submitted By:</b> ${attrs.Creator || "Unknown"}<br>
-            <b>Submitted On:</b> ${attrs.CreationDate ? new Date(attrs.CreationDate).toLocaleString() : "N/A"}<br>
-            ${imgHtml}
+            <div class="uap-popup">
+              <div class="popup-section">
+                <span class="popup-label">Time of Incident:</span>
+                ${attrs.time_of_incident ? new Date(attrs.time_of_incident).toLocaleString() : "N/A"}
+              </div>
+              <div class="popup-section">
+                <span class="popup-label">Description:</span>
+                ${attrs.describe_encounter || "N/A"}
+              </div>
+              <div class="popup-section">
+                <span class="popup-label">Submitted By:</span>
+                ${attrs.Creator || "Unknown"}
+              </div>
+              <div class="popup-section">
+                <span class="popup-label">Submitted On:</span>
+                ${attrs.CreationDate ? new Date(attrs.CreationDate).toLocaleString() : "N/A"}
+              </div>
+              ${imgHtml}
+            </div>
           `;
 
+          // Open the popup at the clicked location with the assembled content
           view.popup.open({
             title: "UAP Sighting Report",
             content: content,
@@ -145,7 +192,8 @@
         });
       });
 
-      // ✅ Define the Legend first
+
+      // Define the Legend first
       const legend = new Legend({
         view: view,
         layerInfos: [{
@@ -154,7 +202,7 @@
         }]
       });
 
-      // ✅ Wrap it in Expand widget
+      // Wrap it in Expand widget
       const legendExpand = new Expand({
         view: view,
         content: legend,
@@ -162,7 +210,7 @@
         expandTooltip: "Legend"
       });
 
-      // ✅ Collapse legend on mobile, expand on larger screens
+      // Collapse legend on mobile, expand on larger screens
       view.watch("widthBreakpoint", (breakpoint) => {
         legendExpand.expanded = (breakpoint !== "xsmall");
       });
