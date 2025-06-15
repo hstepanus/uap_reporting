@@ -5,6 +5,7 @@
   <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no" />
   <title>🛸UAP Sightings Map</title>
 
+  <!-- ArcGIS & Fonts -->
   <link rel="stylesheet" href="https://js.arcgis.com/4.26/esri/themes/light/main.css" />
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap" rel="stylesheet">
   <script src="https://js.arcgis.com/4.26/"></script>
@@ -42,38 +43,21 @@
       box-shadow: 0 0 15px #00ff40, 0 0 30px #00ff40;
     }
 
-    .esri-popup__content, .esri-popup__header-title {
-      font-family: 'Orbitron', sans-serif;
+    /* Popup theming (dark mode) */
+    .esri-popup__main-container {
+      background-color: #111;
       color: #00ff40;
     }
 
-    .esri-popup__main-container {
-      background-color: #111;
-    }
-
-    /* Popup content block */
-    .uap-popup {
+    .esri-popup__content, .esri-popup__header-title {
       font-family: 'Orbitron', sans-serif;
-      color: #222; /* Body text */
-      line-height: 1.6;
-    }
-
-    /* Popup label/title */
-    .uap-popup .popup-label {
-      font-weight: bold;
-      color: #ff0000; 
-      display: block;
-      margin-bottom: 2px;
-    }
-
-    /* Section spacing */
-    .uap-popup .popup-section {
-      margin-bottom: 12px;
+      color: #00ff40;
     }
   </style>
 </head>
 
 <body>
+  <!-- Report button linking to Survey123 form -->
   <a href="https://arcg.is/1qjujz1" target="_blank" class="reportBtn">Report a Sighting</a>
   <div id="viewDiv"></div>
 
@@ -86,12 +70,18 @@
       "esri/widgets/Locate",
       "esri/widgets/Search",
       "esri/widgets/Legend",
-      "esri/widgets/Expand"
-    ], (esriConfig, Map, MapView, FeatureLayer, Locate, Search, Legend, Expand) => {
+      "esri/widgets/Expand",
+      "esri/widgets/BasemapGallery"
+    ], (
+      esriConfig, Map, MapView, FeatureLayer,
+      Locate, Search, Legend, Expand, BasemapGallery
+    ) => {
 
+      // Set your ArcGIS API key
       esriConfig.apiKey = "AAPTxy8BH1VEsoebNVZXo8HurEwEJiPsJAv6XK5APCcuFpZEmTCdTdSU9XMQXYBgfL9c5UnZrY4R2UdHgVrW8LfqDFKnjefPQr9XO0pMlE2S9osFC4vlxQEcDC2L-rbRhvnh3cGFmfknrnTY3XSIHKqUu1aHDnbMm61c0aME06Eg9u_NwfzhPyWlPsZlxkyOWLAtootixnskdcZY0pddnIjDLJ19HPMO7YoJRFfo-wFMnrXD59hI_LVwr_BLfWo0dbk7AT1_nGwi5c7J";
 
-      const map = new Map({ basemap: "streets-relief-vector" });
+      // Initialize the map with a themed basemap
+      const map = new Map({ basemap: "streets-night-vector" });
 
       const view = new MapView({
         container: "viewDiv",
@@ -100,10 +90,11 @@
         zoom: 4
       });
 
+      // Locate and Search widgets
       view.ui.add(new Locate({ view }), "top-left");
       view.ui.add(new Search({ view }), "bottom-right");
 
-      // upa icon marker
+      // Custom renderer using your UFO icon
       const uapRenderer = {
         type: "simple",
         symbol: {
@@ -114,86 +105,37 @@
         },
         label: "UAP encounter"
       };
-      // call to AGOL feature layer API
+
+      // Define popupTemplate instead of manual HTML construction
+      const popupTemplate = {
+        title: "UAP Sighting Report",
+        content: [
+          {
+            type: "fields",
+            fieldInfos: [
+              { fieldName: "time_of_incident", label: "Time of Incident", format: { dateFormat: "short-date-short-time" }},
+              { fieldName: "describe_encounter", label: "Description" },
+              { fieldName: "Creator", label: "Submitted By" },
+              { fieldName: "CreationDate", label: "Submitted On", format: { dateFormat: "short-date-short-time" }}
+            ]
+          },
+          {
+            type: "attachments"  // This auto-displays uploaded images
+          }
+        ]
+      };
+
+      // Define the UAP sightings FeatureLayer
       const uapLayer = new FeatureLayer({
         url: "https://services.arcgis.com/HRPe58bUyBqyyiCt/arcgis/rest/services/survey123_7313cc4fd8bc40c78163e6954fd9dd7f_results/FeatureServer/0",
         outFields: ["*"],
         renderer: uapRenderer,
-        popupEnabled: true
+        popupTemplate: popupTemplate
       });
 
       map.add(uapLayer);
 
-      // Wait until the UAP feature layer view is fully loaded
-      view.whenLayerView(uapLayer).then(() => {
-        
-        // Set up a click event listener on the map view
-        view.on("click", async (event) => {
-          
-          // Use hitTest to detect which feature (if any) was clicked
-          const response = await view.hitTest(event);
-
-          // Find the first graphic in the hitTest result that belongs to the UAP layer
-          const result = response.results.find(r => r.graphic && r.graphic.layer === uapLayer);
-          if (!result) return;
-
-          const graphic = result.graphic;
-          const attrs = graphic.attributes;
-
-          // Get the OBJECTID of the clicked feature (varies in case depending on data source)
-          const objectId = attrs.OBJECTID || attrs.objectid || attrs.ObjectId || attrs.objectId;
-          if (!objectId) return;
-
-          let imgHtml = "";
-
-          try {
-            // Query attachments (e.g., uploaded images) for the selected feature
-            const attachmentResults = await uapLayer.queryAttachments({ objectIds: [objectId] });
-            const attachments = attachmentResults[objectId];
-
-            // If an attachment exists, format the first one as an HTML image
-            if (attachments && attachments.length > 0) {
-              const attachmentUrl = attachments[0].url + "?w=400"; // add width parameter
-              imgHtml = `<br><b>Attached Image:</b><br><img src="${attachmentUrl}" width="250" style="border:1px solid #ccc; border-radius:4px;" />`;
-            }
-          } catch (err) {
-            console.warn("Attachment query failed:", err);
-          }
-
-          // Format the popup content using Orbitron-styled CSS classes
-          const content = `
-            <div class="uap-popup">
-              <div class="popup-section">
-                <span class="popup-label">Time of Incident:</span>
-                ${attrs.time_of_incident ? new Date(attrs.time_of_incident).toLocaleString() : "N/A"}
-              </div>
-              <div class="popup-section">
-                <span class="popup-label">Description:</span>
-                ${attrs.describe_encounter || "N/A"}
-              </div>
-              <div class="popup-section">
-                <span class="popup-label">Submitted By:</span>
-                ${attrs.Creator || "Unknown"}
-              </div>
-              <div class="popup-section">
-                <span class="popup-label">Submitted On:</span>
-                ${attrs.CreationDate ? new Date(attrs.CreationDate).toLocaleString() : "N/A"}
-              </div>
-              ${imgHtml}
-            </div>
-          `;
-
-          // Open the popup at the clicked location with the assembled content
-          view.popup.open({
-            title: "UAP Sighting Report",
-            content: content,
-            location: event.mapPoint
-          });
-        });
-      });
-
-
-      // Define the Legend first
+      // Legend widget setup
       const legend = new Legend({
         view: view,
         layerInfos: [{
@@ -202,7 +144,6 @@
         }]
       });
 
-      // Wrap it in Expand widget
       const legendExpand = new Expand({
         view: view,
         content: legend,
@@ -210,12 +151,21 @@
         expandTooltip: "Legend"
       });
 
-      // Collapse legend on mobile, expand on larger screens
+      // Auto-collapse legend on small screens
       view.watch("widthBreakpoint", (breakpoint) => {
         legendExpand.expanded = (breakpoint !== "xsmall");
       });
 
       view.ui.add(legendExpand, "bottom-left");
+
+      // Basemap gallery to switch styles (dark, satellite, etc.)
+      const basemapGallery = new BasemapGallery({ view: view });
+      const galleryExpand = new Expand({
+        view: view,
+        content: basemapGallery,
+        expandTooltip: "Basemap Gallery"
+      });
+      view.ui.add(galleryExpand, "top-left");
     });
   </script>
 </body>
