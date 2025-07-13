@@ -43,7 +43,6 @@
       box-shadow: 0 0 15px #00ff40, 0 0 30px #00ff40;
     }
 
-    /* Popup theming (dark mode) */
     .esri-popup__main-container {
       background-color: #111;
       color: #00ff40;
@@ -57,7 +56,6 @@
 </head>
 
 <body>
-  <!-- Report button linking to Survey123 form -->
   <a href="https://arcg.is/1qjujz1" target="_blank" class="reportBtn">Report a Sighting</a>
   <div id="viewDiv"></div>
 
@@ -77,10 +75,8 @@
       Locate, Search, Legend, Expand, BasemapGallery
     ) => {
 
-      // Set your ArcGIS API key
       esriConfig.apiKey = "AAPTxy8BH1VEsoebNVZXo8HurEwEJiPsJAv6XK5APCcuFpZEmTCdTdSU9XMQXYBgfL9c5UnZrY4R2UdHgVrW8LfqDFKnjefPQr9XO0pMlE2S9osFC4vlxQEcDC2L-rbRhvnh3cGFmfknrnTY3XSIHKqUu1aHDnbMm61c0aME06Eg9u_NwfzhPyWlPsZlxkyOWLAtootixnskdcZY0pddnIjDLJ19HPMO7YoJRFfo-wFMnrXD59hI_LVwr_BLfWo0dbk7AT1_nGwi5c7J";
 
-      // Initialize the map with a themed basemap
       const map = new Map({ basemap: "streets-night-vector" });
 
       const view = new MapView({
@@ -90,11 +86,9 @@
         zoom: 4
       });
 
-      // Locate and Search widgets
       view.ui.add(new Locate({ view }), "top-left");
       view.ui.add(new Search({ view }), "bottom-right");
 
-      // Custom renderer using your UFO icon
       const uapRenderer = {
         type: "simple",
         symbol: {
@@ -106,7 +100,6 @@
         label: "UAP encounter"
       };
 
-      // Define popupTemplate instead of manual HTML construction
       const popupTemplate = {
         title: "UAP Sighting Report",
         content: [
@@ -120,12 +113,11 @@
             ]
           },
           {
-            type: "attachments"  // This auto-displays uploaded images
+            type: "attachments"
           }
         ]
       };
 
-      // Define the UAP sightings FeatureLayer
       const uapLayer = new FeatureLayer({
         url: "https://services.arcgis.com/HRPe58bUyBqyyiCt/arcgis/rest/services/survey123_7313cc4fd8bc40c78163e6954fd9dd7f_results/FeatureServer/0",
         outFields: ["*"],
@@ -133,9 +125,26 @@
         popupTemplate: popupTemplate
       });
 
+      //  Enable Clustering, Avoid clutter when there are many sightings in one area.
+      uapLayer.featureReduction = {
+        type: "cluster",
+        clusterRadius: "100px",
+        popupTemplate: popupTemplate,
+        labelingInfo: [{
+          deconflictionStrategy: "none",
+          labelExpressionInfo: { expression: "$feature.cluster_count" },
+          symbol: {
+            type: "text",
+            color: "#00ff40",
+            haloColor: "#000000",
+            haloSize: "1px",
+            font: { size: 14, weight: "bold" }
+          }
+        }]
+      };
+
       map.add(uapLayer);
 
-      // Legend widget setup
       const legend = new Legend({
         view: view,
         layerInfos: [{
@@ -151,14 +160,12 @@
         expandTooltip: "Legend"
       });
 
-      // Auto-collapse legend on small screens
       view.watch("widthBreakpoint", (breakpoint) => {
         legendExpand.expanded = (breakpoint !== "xsmall");
       });
 
       view.ui.add(legendExpand, "bottom-left");
 
-      // Basemap gallery to switch styles (dark, satellite, etc.)
       const basemapGallery = new BasemapGallery({ view: view });
       const galleryExpand = new Expand({
         view: view,
